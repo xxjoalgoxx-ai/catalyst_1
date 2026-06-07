@@ -1,0 +1,297 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>CATALYST SCANNER</title>
+<link href="https://fonts.googleapis.com/css2?family=Share+Tech+Mono&family=Barlow+Condensed:wght@400;700;900&family=Barlow:wght@300;400;500&display=swap" rel="stylesheet">
+<style>
+  :root {
+    --bg:#080b10;--surface:#0d1117;--border:#1a2332;
+    --accent:#00ff88;--red:#ff3c5f;--yellow:#ffb800;--blue:#00c2ff;
+    --text:#c9d8e8;--dim:#4a6070;--bright:#eaf4ff;
+    --mono:'Share Tech Mono',monospace;
+  }
+  *{margin:0;padding:0;box-sizing:border-box}
+  body{background:var(--bg);color:var(--text);font-family:'Barlow',sans-serif;min-height:100vh;display:flex;flex-direction:column;align-items:center;padding:32px 16px 60px}
+  body::before{content:'';position:fixed;inset:0;background-image:linear-gradient(rgba(0,255,136,0.025) 1px,transparent 1px),linear-gradient(90deg,rgba(0,255,136,0.025) 1px,transparent 1px);background-size:40px 40px;pointer-events:none;z-index:0}
+  .wrap{position:relative;z-index:1;width:100%;max-width:640px}
+  .header{text-align:center;margin-bottom:28px}
+  .logo{font-family:var(--mono);font-weight:900;font-size:48px;letter-spacing:8px;line-height:1}
+  .logo .g{color:var(--accent);text-shadow:0 0 40px rgba(0,255,136,0.35)}
+  .logo .r{color:var(--red);text-shadow:0 0 40px rgba(255,60,95,0.35)}
+  .sub{font-family:var(--mono);font-size:10px;color:var(--dim);letter-spacing:3px;margin-top:6px}
+  .drop-zone{background:var(--surface);border:1px solid var(--border);border-top:2px solid var(--accent);padding:22px 20px 18px;margin-bottom:12px}
+  .drop-label{font-family:var(--mono);font-size:10px;color:var(--dim);letter-spacing:3px;margin-bottom:10px;display:block}
+  .ticker-row{display:flex;gap:10px}
+  .ticker-input{flex:1;background:var(--bg);border:2px solid var(--border);color:var(--accent);font-family:var(--mono);font-size:26px;font-weight:bold;letter-spacing:4px;padding:12px 14px;outline:none;text-transform:uppercase;transition:border-color .15s,box-shadow .15s}
+  .ticker-input:focus{border-color:var(--accent);box-shadow:0 0 16px rgba(0,255,136,.12)}
+  .ticker-input::placeholder{color:var(--dim);font-size:20px;letter-spacing:2px}
+  .go-btn{background:var(--accent);color:var(--bg);border:none;font-family:var(--mono);font-weight:900;font-size:20px;letter-spacing:2px;padding:0 28px;cursor:pointer;transition:all .15s;flex-shrink:0}
+  .go-btn:hover:not(:disabled){background:#00ffaa;box-shadow:0 0 20px rgba(0,255,136,.35)}
+  .go-btn:disabled{opacity:.35;cursor:not-allowed}
+  .filter-strip{display:flex;gap:6px;flex-wrap:wrap;margin-bottom:24px}
+  .filter-pill{font-family:var(--mono);font-size:9px;letter-spacing:1px;padding:4px 10px;border:1px solid var(--border);color:var(--dim);display:flex;align-items:center;gap:5px}
+  .dot{width:5px;height:5px;border-radius:50%;background:var(--accent);box-shadow:0 0 5px var(--accent);flex-shrink:0}
+  #result{width:100%}
+  .idle-state{text-align:center;padding:52px 20px;border:1px solid var(--border);background:var(--surface)}
+  .idle-icon{font-size:36px;margin-bottom:10px;opacity:.2}
+  .idle-msg{font-family:var(--mono);font-size:10px;color:var(--dim);letter-spacing:2px;line-height:2.2}
+  .loading-state{padding:40px 20px;border:1px solid var(--border);background:var(--surface);display:flex;flex-direction:column;align-items:center;gap:16px}
+  .spinner-ring{width:48px;height:48px;border:3px solid var(--border);border-top-color:var(--accent);border-radius:50%;animation:spin .7s linear infinite}
+  @keyframes spin{to{transform:rotate(360deg)}}
+  .loading-label{font-family:var(--mono);font-size:12px;color:var(--dim);letter-spacing:2px;text-align:center}
+  .loading-label strong{color:var(--accent)}
+  .loading-steps{display:flex;flex-direction:column;gap:8px;width:100%;max-width:300px}
+  .step{font-family:var(--mono);font-size:10px;color:var(--dim);letter-spacing:1px;display:flex;align-items:center;gap:8px;transition:color .3s}
+  .step.active{color:var(--accent)}
+  .step-dot{width:6px;height:6px;border-radius:50%;border:1px solid currentColor;flex-shrink:0}
+  .step.active .step-dot{background:var(--accent);border-color:var(--accent);box-shadow:0 0 6px var(--accent)}
+  .step.done .step-dot{background:var(--dim)}
+  .result-card{border:1px solid var(--border);border-top:3px solid var(--accent);background:var(--surface);animation:popIn .3s ease}
+  .result-card.high{border-top-color:var(--red)}
+  .result-card.medium{border-top-color:var(--yellow)}
+  .result-card.low{border-top-color:var(--dim)}
+  @keyframes popIn{from{opacity:0;transform:translateY(10px)}to{opacity:1;transform:translateY(0)}}
+  .filter-bar{display:flex;border-bottom:1px solid var(--border);overflow-x:auto}
+  .fcheck{flex:1;min-width:72px;padding:10px 6px;text-align:center;border-right:1px solid var(--border);display:flex;flex-direction:column;align-items:center;gap:4px}
+  .fcheck:last-child{border-right:none}
+  .fcheck-label{font-family:var(--mono);font-size:8px;color:var(--dim);letter-spacing:1px}
+  .fcheck-val{font-family:var(--mono);font-size:12px;font-weight:bold;letter-spacing:1px}
+  .fcheck-val.pass{color:var(--accent)}
+  .fcheck-val.fail{color:var(--red)}
+  .fcheck-val.unknown{color:var(--dim)}
+  .card-body{padding:20px 24px 24px}
+  .card-top{display:flex;align-items:flex-start;justify-content:space-between;gap:12px;margin-bottom:16px}
+  .result-ticker{font-family:var(--mono);font-size:32px;font-weight:bold;color:var(--bright);letter-spacing:3px;line-height:1}
+  .result-company{font-size:12px;color:var(--dim);margin-top:4px}
+  .badges{display:flex;flex-direction:column;align-items:flex-end;gap:6px}
+  .cat-badge{font-family:var(--mono);font-size:9px;letter-spacing:2px;padding:3px 10px;border:1px solid;text-transform:uppercase}
+  .cat-EARNINGS{color:var(--yellow);border-color:var(--yellow);background:rgba(255,184,0,.08)}
+  .cat-FDA{color:var(--accent);border-color:var(--accent);background:rgba(0,255,136,.08)}
+  .cat-CONTRACT{color:var(--blue);border-color:var(--blue);background:rgba(0,194,255,.08)}
+  .cat-DILUTION{color:var(--red);border-color:var(--red);background:rgba(255,60,95,.08)}
+  .cat-PARTNERSHIP{color:var(--blue);border-color:var(--blue);background:rgba(0,194,255,.08)}
+  .cat-MERGER{color:var(--yellow);border-color:var(--yellow);background:rgba(255,184,0,.08)}
+  .cat-CLINICAL{color:var(--accent);border-color:var(--accent);background:rgba(0,255,136,.08)}
+  .cat-OFFERING{color:var(--red);border-color:var(--red);background:rgba(255,60,95,.08)}
+  .cat-REGULATORY{color:var(--yellow);border-color:var(--yellow);background:rgba(255,184,0,.08)}
+  .cat-SQUEEZE{color:var(--accent);border-color:var(--accent);background:rgba(0,255,136,.08)}
+  .cat-NEWS{color:var(--text);border-color:var(--border)}
+  .impact-badge{font-family:var(--mono);font-size:9px;letter-spacing:1px}
+  .impact-HIGH{color:var(--red)}.impact-MEDIUM{color:var(--yellow)}.impact-LOW{color:var(--dim)}
+  .headline{font-family:var(--mono);font-weight:700;font-size:18px;color:var(--bright);line-height:1.3;margin-bottom:10px}
+  .summary{font-size:14px;color:var(--text);line-height:1.7;margin-bottom:14px}
+  .trade-note{background:rgba(0,255,136,.05);border-left:2px solid var(--accent);padding:10px 14px;margin-bottom:14px}
+  .trade-note-label{font-family:var(--mono);font-size:9px;color:var(--accent);opacity:.5;letter-spacing:2px;margin-bottom:4px}
+  .trade-note-text{font-family:var(--mono);font-size:12px;color:var(--accent);line-height:1.6}
+  .card-footer{display:flex;align-items:center;justify-content:space-between;padding-top:12px;border-top:1px solid var(--border)}
+  .ts{font-family:var(--mono);font-size:10px;color:var(--dim)}
+  .src{font-family:var(--mono);font-size:10px;color:var(--blue);opacity:.7}
+  .no-catalyst{padding:36px 20px;text-align:center;border:1px solid var(--border);background:var(--surface)}
+  .no-catalyst-icon{font-size:28px;opacity:.25;margin-bottom:8px}
+  .no-catalyst-msg{font-family:var(--mono);font-size:11px;color:var(--dim);letter-spacing:1px;line-height:1.8}
+  .err-box{padding:20px 24px;background:rgba(255,60,95,.06);border:1px solid rgba(255,60,95,.2);font-family:var(--mono);font-size:12px;color:var(--red);line-height:1.7}
+  .recent-row{margin-top:18px;display:flex;align-items:center;gap:8px;flex-wrap:wrap}
+  .recent-label{font-family:var(--mono);font-size:9px;color:var(--dim);letter-spacing:2px}
+  .recent-chip{font-family:var(--mono);font-size:11px;padding:3px 10px;border:1px solid var(--border);color:var(--dim);cursor:pointer;letter-spacing:1px;background:transparent;transition:all .15s}
+  .recent-chip:hover{border-color:var(--accent);color:var(--accent)}
+</style>
+</head>
+<body>
+<div class="wrap">
+  <div class="header">
+    <div class="logo"><span class="g">CATA</span><span class="r">LYST</span></div>
+    <div class="sub">WEBULL ALERT → DROP TICKER → GET INTEL</div>
+  </div>
+
+  <div class="drop-zone">
+    <span class="drop-label">TICKER — paste from Webull alert</span>
+    <div class="ticker-row">
+      <input class="ticker-input" id="tickerInput" type="text" maxlength="6"
+        placeholder="AAPL" autocomplete="off" autocorrect="off" spellcheck="false"
+        onkeydown="if(event.key==='Enter')go()"/>
+      <button class="go-btn" id="goBtn" onclick="go()">GO</button>
+    </div>
+  </div>
+
+  <div class="filter-strip">
+    <div class="filter-pill"><span class="dot"></span>PRICE $2–$20</div>
+    <div class="filter-pill"><span class="dot"></span>CHANGE +10%+</div>
+    <div class="filter-pill"><span class="dot"></span>RVOL 5×+</div>
+    <div class="filter-pill"><span class="dot"></span>FLOAT &lt;20M</div>
+    <div class="filter-pill"><span class="dot"></span>NEWS CATALYST</div>
+  </div>
+
+  <div id="result">
+    <div class="idle-state">
+      <div class="idle-icon">📡</div>
+      <div class="idle-msg">WEBULL ALERT FIRES<br>↓<br>PASTE TICKER → HIT GO<br>↓<br>GET FULL CATALYST INTEL</div>
+    </div>
+  </div>
+
+  <div class="recent-row" id="recentRow" style="display:none">
+    <span class="recent-label">RECENT:</span>
+    <span id="recentChips"></span>
+  </div>
+</div>
+
+<script>
+  const recent = [];
+
+  function addRecent(t) {
+    if (recent.includes(t)) return;
+    recent.unshift(t);
+    if (recent.length > 5) recent.pop();
+    const row = document.getElementById('recentRow');
+    const chips = document.getElementById('recentChips');
+    row.style.display = 'flex';
+    chips.innerHTML = recent.map(x => `<button class="recent-chip" onclick="loadTicker('${x}')">${x}</button>`).join('');
+  }
+
+  function loadTicker(t) {
+    document.getElementById('tickerInput').value = t;
+    go();
+  }
+
+  function setStep(n) {
+    ['step-news','step-filter','step-analyze'].forEach((id,i) => {
+      const el = document.getElementById(id);
+      if (el) el.className = 'step '+(i<n?'done':i===n?'active':'');
+    });
+  }
+
+  async function go() {
+    const raw = document.getElementById('tickerInput').value.trim().toUpperCase().replace(/[^A-Z]/g,'');
+    if (!raw) return;
+
+    const btn = document.getElementById('goBtn');
+    btn.disabled = true;
+
+    document.getElementById('result').innerHTML = `
+      <div class="loading-state">
+        <div class="spinner-ring"></div>
+        <div class="loading-label">SCANNING <strong>${raw}</strong></div>
+        <div class="loading-steps">
+          <div class="step active" id="step-news"><span class="step-dot"></span>SEARCHING BREAKING NEWS</div>
+          <div class="step" id="step-filter"><span class="step-dot"></span>CHECKING YOUR FILTERS</div>
+          <div class="step" id="step-analyze"><span class="step-dot"></span>BUILDING CATALYST REPORT</div>
+        </div>
+      </div>`;
+
+    setTimeout(()=>setStep(1),1200);
+    setTimeout(()=>setStep(2),2400);
+
+    const result = await scanTicker(raw);
+    btn.disabled = false;
+    document.getElementById('tickerInput').value = '';
+    document.getElementById('tickerInput').focus();
+    addRecent(raw);
+    renderResult(result, raw);
+  }
+
+  async function scanTicker(ticker) {
+    const prompt = `You are an elite small cap day trading analyst. A Webull screener alert just fired for: ${ticker}
+
+Filters passed: Price $2-$20, change +10%+, relative volume 5x+, float under 20M shares.
+
+Search for the VERY LATEST breaking news catalyst (last 24-72 hours) explaining why this stock is moving. Look for: FDA approvals/rejections, earnings, dilutive offerings, reverse splits, contracts, M&A, short squeeze, regulatory actions, viral catalysts.
+
+Also find: current price, today % change, float size, RVOL if available.
+
+Respond ONLY in valid JSON, no markdown, no backticks.
+
+If no significant catalyst: {"noNews":true,"ticker":"${ticker}"}
+
+If catalyst found:
+{"ticker":"${ticker}","companyName":"full name","price":"$X.XX","changePercent":"+XX%","float":"X.XM","rvol":"Xx","headline":"max 12 word headline","catalystType":"EARNINGS|FDA|CONTRACT|DILUTION|PARTNERSHIP|MERGER|CLINICAL|OFFERING|REGULATORY|SQUEEZE|NEWS","impact":"HIGH|MEDIUM|LOW","bullOrBear":"BULL|BEAR|NEUTRAL","summary":"2-3 sentence factual summary","tradingNote":"one sentence trader take","timestamp":"e.g. Today 9:42am","source":"source name"}`;
+
+    try {
+      const res = await fetch('/.netlify/functions/proxy', {
+        method: 'POST',
+        headers: {'Content-Type':'application/json'},
+        body: JSON.stringify({
+          model: 'claude-sonnet-4-20250514',
+          max_tokens: 1000,
+          tools: [{type:'web_search_20250305',name:'web_search'}],
+          messages: [{role:'user',content:prompt}]
+        })
+      });
+
+      const data = await res.json();
+      if (!res.ok) throw new Error(data.error?.message||`Error ${res.status}`);
+
+      const text = (data.content||[]).filter(b=>b.type==='text').map(b=>b.text).join('');
+      const match = text.replace(/```json|```/g,'').match(/\{[\s\S]*\}/);
+      if (!match) return {noNews:true,ticker};
+      return JSON.parse(match[0]);
+    } catch(e) {
+      return {ticker, error: e.message};
+    }
+  }
+
+  function fc(val,passes) {
+    const cls = passes===null?'unknown':passes?'pass':'fail';
+    return `<span class="fcheck-val ${cls}">${val}</span>`;
+  }
+
+  function renderResult(r, ticker) {
+    const area = document.getElementById('result');
+
+    if (r.error) {
+      area.innerHTML = `<div class="err-box">⚠ Error scanning ${ticker}<br>${r.error}</div>`;
+      return;
+    }
+    if (r.noNews) {
+      area.innerHTML = `<div class="no-catalyst"><div class="no-catalyst-icon">◌</div><div class="no-catalyst-msg">NO SIGNIFICANT CATALYST FOUND FOR ${ticker}<br><span style="font-size:9px;opacity:.5">Move may be technical. Check chart for level breaks.</span></div></div>`;
+      return;
+    }
+
+    const ic = r.impact==='HIGH'?'high':r.impact==='MEDIUM'?'medium':'low';
+    const cat = r.catalystType||'NEWS';
+    const pn = r.price?parseFloat(r.price.replace(/[^0-9.]/g,'')):null;
+    const pp = pn?(pn>=2&&pn<=20):null;
+    const cp = r.changePercent?parseFloat(r.changePercent.replace(/[^0-9.-]/g,'')):null;
+    const cpp = cp?cp>=10:null;
+    const fn = r.float?parseFloat(r.float.replace(/[^0-9.]/g,'')):null;
+    const fu = r.float?r.float.replace(/[0-9.]/g,'').trim().toUpperCase():'';
+    const fm = fu==='B'?fn*1000:fn;
+    const fp = fm?fm<20:null;
+    const rn = r.rvol?parseFloat(r.rvol.replace(/[^0-9.]/g,'')):null;
+    const rp = rn?rn>=5:null;
+    const bc = r.bullOrBear==='BULL'?'var(--accent)':r.bullOrBear==='BEAR'?'var(--red)':'var(--dim)';
+    const bi = r.bullOrBear==='BULL'?'▲':r.bullOrBear==='BEAR'?'▼':'◆';
+
+    area.innerHTML = `
+      <div class="result-card ${ic}">
+        <div class="filter-bar">
+          <div class="fcheck"><div class="fcheck-label">PRICE</div>${fc(r.price||'—',pp)}</div>
+          <div class="fcheck"><div class="fcheck-label">CHANGE</div>${fc(r.changePercent||'—',cpp)}</div>
+          <div class="fcheck"><div class="fcheck-label">RVOL</div>${fc(r.rvol||'—',rp)}</div>
+          <div class="fcheck"><div class="fcheck-label">FLOAT</div>${fc(r.float||'—',fp)}</div>
+          <div class="fcheck"><div class="fcheck-label">BIAS</div><span class="fcheck-val" style="color:${bc}">${bi} ${r.bullOrBear||'—'}</span></div>
+        </div>
+        <div class="card-body">
+          <div class="card-top">
+            <div>
+              <div class="result-ticker">${r.ticker}</div>
+              <div class="result-company">${r.companyName||''}</div>
+            </div>
+            <div class="badges">
+              <div class="cat-badge cat-${cat}">${cat}</div>
+              <div class="impact-badge impact-${r.impact}">${r.impact} IMPACT</div>
+            </div>
+          </div>
+          <div class="headline">${r.headline||'Catalyst detected'}</div>
+          <div class="summary">${r.summary||''}</div>
+          ${r.tradingNote?`<div class="trade-note"><div class="trade-note-label">TRADING NOTE</div><div class="trade-note-text">${r.tradingNote}</div></div>`:''}
+          <div class="card-footer">
+            <div class="ts">🕐 ${r.timestamp||'Recent'}</div>
+            <div class="src">${r.source?'↗ '+r.source:''}</div>
+          </div>
+        </div>
+      </div>`;
+  }
+</script>
+</body>
+</html>
